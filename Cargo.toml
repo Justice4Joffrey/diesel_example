@@ -1,0 +1,9 @@
+[package]
+name = "diesel_example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+diesel = { features = ["postgres", "r2d2"], git = "https://github.com/diesel-rs/diesel.git", rev = "b0a2c1e35ac0a734a9d5274c0468db1f9f1383fd"}
