@@ -44,7 +44,7 @@ fn do_thing_complex_query(
         .first(conn)
 }
 
-/// doesn't work :(
+/// works too!
 fn do_thing_complex_query_with_alias(
     conn: &mut impl Connection<Backend = Pg>,
 ) -> QueryResult<(User, JustPostTitleAndId, JustPostTitleAndId)> {
