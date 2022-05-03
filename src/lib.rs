@@ -1,17 +1,5 @@
-use diesel::pg::{Pg, PgConnection};
-use diesel::r2d2::{ConnectionManager, PooledConnection, Pool};
+use diesel::pg::Pg;
 use diesel::prelude::*;
-
-/// The Postgres-specific connection pool managing all database connections.
-pub type PostgresPool = Pool<ConnectionManager<PgConnection>>;
-
-/// A trait to allow shorthand generics over pg connections
-pub trait PostgresConnection: Connection<Backend=Pg> {}
-
-impl PostgresConnection for PgConnection {}
-
-impl PostgresConnection for PooledConnection<ConnectionManager<PgConnection>> {}
-
 
 table! {
     users {
@@ -20,19 +8,53 @@ table! {
     }
 }
 
+table! {
+    posts {
+        id -> Integer,
+        user_id -> Integer,
+        title -> Text,
+    }
+}
+
+joinable!(posts -> users (user_id));
+
+allow_tables_to_appear_in_same_query!(users, posts);
+
 #[derive(Queryable, Identifiable, AsChangeset, Selectable, Debug)]
 struct User {
     id: i32,
     name: String,
 }
 
-fn do_thing(conn: &mut impl PostgresConnection) -> QueryResult<User> {
-    users::table.select(User::as_select()).first(conn)
+#[derive(Queryable, Identifiable, Selectable, Debug)]
+#[diesel(table_name = posts)]
+struct JustPostTitleAndId {
+    id: i32,
+    title: String,
 }
 
+/// works!
+fn do_thing_complex_query(
+    conn: &mut impl Connection<Backend = Pg>,
+) -> QueryResult<(User, JustPostTitleAndId)> {
+    users::table
+        .inner_join(posts::table.on(users::id.eq(posts::user_id)))
+        .select((User::as_select(), JustPostTitleAndId::as_select()))
+        .first(conn)
+}
 
-fn do_thing_must_use_verbose_trait_bounds(conn: &mut impl PostgresConnection) -> QueryResult<()> {
-    let mut user = users::table.select(User::as_select()).first(conn)?;
-    user.name = "test".to_owned();
-    user.save_changes(conn)
+/// doesn't work :(
+fn do_thing_complex_query_with_alias(
+    conn: &mut impl Connection<Backend = Pg>,
+) -> QueryResult<(User, JustPostTitleAndId, JustPostTitleAndId)> {
+    let posts_alias = diesel::alias!(posts as posts_alias);
+    users::table
+        .inner_join(posts::table.on(users::id.eq(posts::user_id)))
+        .inner_join(posts_alias.on(users::id.eq(posts_alias.field(posts::user_id))))
+        .select((
+            User::as_select(),
+            JustPostTitleAndId::as_select(),
+            posts_alias.fields(JustPostTitleAndId::as_select()),
+        ))
+        .first(conn)
 }
