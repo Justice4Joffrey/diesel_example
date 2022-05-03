@@ -1,3 +1,4 @@
+use diesel::backend::Backend;
 use diesel::pg::Pg;
 use diesel::prelude::*;
 
@@ -54,7 +55,7 @@ fn do_thing_complex_query_with_alias(
         .select((
             User::as_select(),
             JustPostTitleAndId::as_select(),
-            posts_alias.fields(JustPostTitleAndId::as_select()),
+            posts_alias.fields(<JustPostTitleAndId as Selectable<Pg>>::construct_selection()),
         ))
         .first(conn)
 }
